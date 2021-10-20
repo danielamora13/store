@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { NgForm } from '@angular/forms';
-import { switchMap, tap } from 'rxjs/operators';
+import { Router } from '@angular/router';
+import { delay, switchMap, tap } from 'rxjs/operators';
 import { Details, DetailsOrder, Order } from 'src/app/shared/interfaces/order.interface';
 import { Store } from 'src/app/shared/interfaces/store.interface';
 import { DataService } from 'src/app/shared/services/data.service';
@@ -20,17 +21,19 @@ export class CheckoutComponent implements OnInit {
     shippingAddress:'',
     city:''
   }
-  isDelivery = false;
+  isDelivery = true;
   cart: Product[] = [];
   stores: Store[] = [];
   constructor(
     private dataSvc: DataService,
-    private shoppingCartSvc: ShoppingCartService
+    private shoppingCartSvc: ShoppingCartService,
+    private router: Router
     ) { }
 
   ngOnInit(): void {
     this.getStores();
     this.getDataCart();
+    this.prepareDetails();
   }
 
   onPickupOrDelivery(value: boolean): void {
@@ -42,17 +45,19 @@ export class CheckoutComponent implements OnInit {
     const data: Order = {
       ... formData,
       date: this.getCurrentDay,
-      pickup: this.isDelivery
+      isDelivery: this.isDelivery
     }
     this.dataSvc.saveOrder(data)
     .pipe(
       tap( res => console.log('Order ->', res)),
-      switchMap((order) => {
-        const orderId = order.id;
+      switchMap(({id: orderId}) => {
         const details = this.prepareDetails();
         return this.dataSvc.saveDetailsOrder({ details, orderId });
       }),
-      tap( res => console.log('Finish ->', res))
+      tap( () => this.router.navigate(['/checkout/thank-you-page'])),
+      delay(2000),
+      tap(() => this.shoppingCartSvc.resetCart())
+
     )
     .subscribe()
     
@@ -71,8 +76,9 @@ export class CheckoutComponent implements OnInit {
 
   private prepareDetails(): Details[] {
     const details: Details[] = [];
-    this.cart.forEach(res => {
-      console.log(res);
+    this.cart.forEach((product: Product) => {
+      const {id: productId, name: productName, qty: quantity, stock} = product;
+      details.push({productId, productName, quantity});
     })
     return details;
   }
