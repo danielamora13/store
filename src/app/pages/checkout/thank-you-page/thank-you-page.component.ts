@@ -18,5 +18,5 @@ import { Component } from '@angular/core';
 </div>`,
   styleUrls: ['./thank-you-page.component.scss']
 })
-export class ThankYouPageComponen{
+export class ThankYouPageComponent{
 }
